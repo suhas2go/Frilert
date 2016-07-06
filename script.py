@@ -44,8 +44,8 @@ html=driver.page_source
 soup=bs4.BeautifulSoup(html,'html.parser')
 frds=soup.findAll("li",attrs={'class':'_42fz'})
 for frd in frds:
-	if not frd.findAll('i'):
-		#all who are online NOT  
+	if frd.findAll('i'):
+		#all who are online 
 		for f in frd.findAll('div',attrs={'class':'_55lr'}):
 			if f.string in flist:
 				print (f.string)
