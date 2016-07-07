@@ -39,7 +39,7 @@ def leftclick(event, obj):
 root = Tk()
 root.title("Frilert")
 
-driver = webdriver.PhantomJS(ppath)
+driver = webdriver.PhantomJS(ppath,service_args=['--load-images=no'])
 driver.maximize_window()
 driver.get('http://www.facebook.com/login.php')
 username = driver.find_element_by_id('email')
@@ -57,7 +57,7 @@ except TimeoutException:
     print ("Loading took too much time!")
 
 
-# driver.save_screenshot('screen.png')
+#driver.save_screenshot('screen.png')
 onl = []
 html = driver.page_source
 soup = bs4.BeautifulSoup(html, 'html.parser')
@@ -66,14 +66,13 @@ for frd in frds:
 	if frd.findAll('i'):
 		# all who are online
 		for f in frd.findAll('div', attrs={'class': '_55lr'}):
-			print(f.string)
+			print(f.string.encode('utf-8'))
 			onl.append(f.string)
-
+print (len(onl))
 if not onl:
 	l = Label(root, text='none is online on fb')
 	l.pack()
 else:
-	ctr = 0
 	butts = []
 	for onlfrd in onl:
 		butts.append(Button(root, text=onlfrd))
