@@ -1,6 +1,10 @@
 import os
 import sys
-import win32api
+
+from win32api import *
+
+import struct
+
 import win32con
 import win32gui_struct
 import time
@@ -87,6 +91,32 @@ class SysTrayIcon(object):
                                           hinst,
                                           None)
         win32gui.UpdateWindow(self.hwnd)
+        title='psst..go online?'
+        msg=''
+        for mo in list(menu_options):
+            if msg=='':
+                msg=mo
+            else:
+                if mo!='Quit':
+                    msg=msg+','+mo
+        icon_flags = win32con.LR_LOADFROMFILE | win32con.LR_DEFAULTSIZE
+        hicon = win32gui.LoadImage(hinst,
+                                       self.icon,
+                                       win32con.IMAGE_ICON,
+                                       0,
+                                       0,
+                                       icon_flags)
+        flags = win32gui.NIF_ICON | win32gui.NIF_MESSAGE | win32gui.NIF_TIP
+        nid = (self.hwnd, 0, flags, win32con.WM_USER+20, hicon, "tooltip")
+        win32gui.Shell_NotifyIcon(win32gui.NIM_ADD, nid)
+        win32gui.Shell_NotifyIcon(win32gui.NIM_MODIFY, \
+                         (self.hwnd, 0, win32gui.NIF_INFO, win32con.WM_USER+20,\
+                          hicon, "Balloon  tooltip",msg,200,title))
+
+
+
+
+
         self.notify_id = None
         self.refresh_icon()
         
@@ -117,7 +147,7 @@ class SysTrayIcon(object):
             print ("Can't find icon file - using default.")
             hicon = win32gui.LoadIcon(0, win32con.IDI_APPLICATION)
 
-        if self.notify_id: message = win32gui.NIM_MODIFY
+        '''if self.notify_id: message = win32gui.NIM_MODIFY
         else: message = win32gui.NIM_ADD
         self.notify_id = (self.hwnd,
                           0,
@@ -125,8 +155,7 @@ class SysTrayIcon(object):
                           win32con.WM_USER+20,
                           hicon,
                           self.hover_text)
-        win32gui.Shell_NotifyIcon(message, self.notify_id)
-
+        win32gui.Shell_NotifyIcon(message, self.notify_id)'''
     def restart(self, hwnd, msg, wparam, lparam):
         self.refresh_icon()
 
@@ -193,7 +222,7 @@ def non_string_iterable(obj):
     except TypeError:
         return False
     else:
-    	print('well')
+        print('well')
         #return not isinstance(obj, basestring)
 
 # Minimal self test. You'll need a bunch of ICO files in the current working
@@ -217,7 +246,7 @@ if __name__ == '__main__':
         chtbx = driver.find_element_by_class_name('_58al')
         chtbx.send_keys(menu_action)
         time.sleep(5)
-        chtbx.send_keys(Keys.Enter);
+        chtbx.send_keys(Keys.Return);
     
     driver = webdriver.PhantomJS(ppath,service_args=['--load-images=no'])
     driver.maximize_window()
