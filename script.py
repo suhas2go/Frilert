@@ -18,6 +18,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
+from multiprocessing import Process
 
 f = open(r"C:\Users\Suhas\Documents\hashpw.txt")
 pw = f.read()
@@ -25,8 +26,6 @@ pw = f.read()
 flist = ['Aditya Kanthale', 'Ashish Singh','Sambhav Kothari','Mohit Bagri']  # add your friends names here
 chrome_path = r"C:\Users\Suhas\Downloads\chromedriver.exe"
 ppath = r"C:\Users\Suhas\Downloads\phantomjs-2.1.1-windows\bin\phantomjs.exe"
-
-
 
 try:
     import winxpgui as win32gui
@@ -39,28 +38,19 @@ class SysTrayIcon(object):
     SPECIAL_ACTIONS = [QUIT]
     
     FIRST_ID = 1023
-    
+   
     def __init__(self,
                  icon,
                  hover_text,
-                 menu_options,
                  on_quit=None,
                  default_menu_index=None,
                  window_class_name=None,):
         
+        self.runevery=600 #10minutes
         self.icon = icon
         self.hover_text = hover_text
         self.on_quit = on_quit
-        
-        menu_options = menu_options + ('Quit',)
-        self._next_action_id = self.FIRST_ID
-        self.menu_actions_by_id = set()
-        self.menu_options = self._add_ids_to_menu_options(list(menu_options))
-        self.menu_actions_by_id = dict(self.menu_actions_by_id)
-        del self._next_action_id
-
-        
-        
+          
         self.default_menu_index = (default_menu_index or 0)
         self.window_class_name = window_class_name or "SysTrayIconPy"
         
@@ -91,38 +81,95 @@ class SysTrayIcon(object):
                                           hinst,
                                           None)
         win32gui.UpdateWindow(self.hwnd)
-        title='psst..go online?'
-        msg=''
-        for mo in list(menu_options):
-            if msg=='':
-                msg=mo
-            else:
-                if mo!='Quit':
-                    msg=msg+','+mo
-        icon_flags = win32con.LR_LOADFROMFILE | win32con.LR_DEFAULTSIZE
-        hicon = win32gui.LoadImage(hinst,
-                                       self.icon,
-                                       win32con.IMAGE_ICON,
-                                       0,
-                                       0,
-                                       icon_flags)
-        flags = win32gui.NIF_ICON | win32gui.NIF_MESSAGE | win32gui.NIF_TIP
-        nid = (self.hwnd, 0, flags, win32con.WM_USER+20, hicon, "tooltip")
-        win32gui.Shell_NotifyIcon(win32gui.NIM_ADD, nid)
-        win32gui.Shell_NotifyIcon(win32gui.NIM_MODIFY, \
-                         (self.hwnd, 0, win32gui.NIF_INFO, win32con.WM_USER+20,\
-                          hicon, "Balloon  tooltip",msg,200,title))
 
-
-
-
-
-        self.notify_id = None
+        self.ctr=0
+        driver = webdriver.PhantomJS(ppath,service_args=['--load-images=no'])
+        driver.maximize_window()
+        driver.get('http://www.facebook.com/login.php')
+        username = driver.find_element_by_id('email')
+        username.send_keys('suhas2go')  # replace with your username
+        passw = driver.find_element_by_id('pass')
+        passw.send_keys(pw)
+        passw.submit()
         self.refresh_icon()
         
-        win32gui.PumpMessages()
+        def corejob():
+            if self.ctr==1:
+                driver.get('http://www.facebook.com')
 
-    
+            delay=10
+            #time.sleep(delay)
+            try:
+                WebDriverWait(driver, delay).until(EC.presence_of_element_located((By.ID, 'js_1g')))
+                print ("Page is ready!")
+            except TimeoutException:
+                print ("Loading took too much time!")
+
+
+            #driver.save_screenshot('screen.png')
+            onl = []
+            html = driver.page_source
+            soup = bs4.BeautifulSoup(html, 'html.parser')
+            frds = soup.findAll("li", attrs={'class': '_42fz'})
+            for frd in frds:
+                if frd.findAll('i'):
+                    # all who are online
+                    for f in frd.findAll('div', attrs={'class': '_55lr'}):
+                        onl.append(f.string)
+
+            #menu_options = ('Say Hello','Switch Icon')
+            menu_options=tuple(onl)
+            menu_options = menu_options + ('Quit',)
+            self._next_action_id = self.FIRST_ID
+            self.menu_actions_by_id = set()
+            self.menu_options = self._add_ids_to_menu_options(list(menu_options))
+            self.menu_actions_by_id = dict(self.menu_actions_by_id)
+            del self._next_action_id
+
+            title='psst..go online?'
+            msg=''
+            for mo in list(menu_options):
+                if msg=='':
+                    msg=mo
+                else:
+                    if mo!='Quit' and mo is not None:
+                        msg=msg+','+mo
+
+            '''icon_flags = win32con.LR_LOADFROMFILE | win32con.LR_DEFAULTSIZE
+            hicon = win32gui.LoadImage(hinst,
+                                           self.icon,
+                                           win32con.IMAGE_ICON,
+                                           0,
+                                           0,
+                                           icon_flags)
+            '''
+            if(self.ctr==1):
+                win32gui.Shell_NotifyIcon(win32gui.NIM_MODIFY, \
+                             (self.hwnd, 0, win32gui.NIF_INFO, win32con.WM_USER+20,\
+                              self.hicon, "Balloon  tooltip",msg,200,title))
+            else:
+                self.btip(title,msg)
+            
+            self.notify_id = None
+            #self.refresh_icon()
+            self.lastrun=time.time();
+            print(self.lastrun)
+        corejob() 
+        self.ctr=1
+        while(1):
+            while(time.time()-self.lastrun<self.runevery):
+                win32gui.PumpWaitingMessages()
+            corejob()
+              
+
+    def btip(self,title,msg):
+        flags = win32gui.NIF_ICON | win32gui.NIF_MESSAGE | win32gui.NIF_TIP
+        nid = (self.hwnd, 0, flags, win32con.WM_USER+20, self.hicon, "Frilert")
+        win32gui.Shell_NotifyIcon(win32gui.NIM_ADD, nid)
+        win32gui.Shell_NotifyIcon(win32gui.NIM_MODIFY, \
+                             (self.hwnd, 0, win32gui.NIF_INFO, win32con.WM_USER+20,\
+                              self.hicon, "Balloon  tooltip",msg,200,title))
+
     def _add_ids_to_menu_options(self, menu_options):
         result = []
         for menu_option in menu_options:
@@ -137,7 +184,7 @@ class SysTrayIcon(object):
         hinst = win32gui.GetModuleHandle(None)
         if os.path.isfile(self.icon):
             icon_flags = win32con.LR_LOADFROMFILE | win32con.LR_DEFAULTSIZE
-            hicon = win32gui.LoadImage(hinst,
+            self.hicon = win32gui.LoadImage(hinst,
                                        self.icon,
                                        win32con.IMAGE_ICON,
                                        0,
@@ -145,7 +192,7 @@ class SysTrayIcon(object):
                                        icon_flags)
         else:
             print ("Can't find icon file - using default.")
-            hicon = win32gui.LoadIcon(0, win32con.IDI_APPLICATION)
+            self.hicon = win32gui.LoadIcon(0, win32con.IDI_APPLICATION)
 
         '''if self.notify_id: message = win32gui.NIM_MODIFY
         else: message = win32gui.NIM_ADD
@@ -166,6 +213,7 @@ class SysTrayIcon(object):
         win32gui.PostQuitMessage(0) # Terminate the app.
 
     def notify(self, hwnd, msg, wparam, lparam):
+        
         if lparam==win32con.WM_LBUTTONDBLCLK:
             self.execute_menu_option(self.default_menu_index + self.FIRST_ID)
         elif lparam==win32con.WM_RBUTTONUP:
@@ -225,8 +273,7 @@ def non_string_iterable(obj):
         print('well')
         #return not isinstance(obj, basestring)
 
-# Minimal self test. You'll need a bunch of ICO files in the current working
-# directory in order for this to work...
+
 if __name__ == '__main__':
     import itertools, glob
     favicon = itertools.cycle(glob.glob(r"C:\Users\Suhas\Documents\Frilert\systry\favicon.ico"))
@@ -248,39 +295,6 @@ if __name__ == '__main__':
         time.sleep(5)
         chtbx.send_keys(Keys.Return);
     
-    driver = webdriver.PhantomJS(ppath,service_args=['--load-images=no'])
-    driver.maximize_window()
-    driver.get('http://www.facebook.com/login.php')
-    username = driver.find_element_by_id('email')
-    username.send_keys('suhas2go')  # replace with your username
-    passw = driver.find_element_by_id('pass')
-    passw.send_keys(pw)
-    passw.submit()
-
-    delay=10
-    #time.sleep(delay)
-    try:
-        WebDriverWait(driver, delay).until(EC.presence_of_element_located((By.ID, 'js_1g')))
-        print ("Page is ready!")
-    except TimeoutException:
-        print ("Loading took too much time!")
-
-
-    #driver.save_screenshot('screen.png')
-    onl = []
-    html = driver.page_source
-    soup = bs4.BeautifulSoup(html, 'html.parser')
-    frds = soup.findAll("li", attrs={'class': '_42fz'})
-    for frd in frds:
-        if frd.findAll('i'):
-            # all who are online
-            for f in frd.findAll('div', attrs={'class': '_55lr'}):
-                if f is not None:
-                    print(f.string.encode('utf-8'))
-                    onl.append(f.string)
-
-    #menu_options = ('Say Hello','Switch Icon')
-    menu_options=tuple(onl)
     def bye(sysTrayIcon): print ('Bye, then.')
     
-    SysTrayIcon(next(favicon), hover_text, menu_options, on_quit=bye, default_menu_index=1)
+    SysTrayIcon(next(favicon), hover_text, on_quit=bye, default_menu_index=1)
