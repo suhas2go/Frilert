@@ -9,4 +9,5 @@ the friends online from flist
 4. Making the code clean and available for download
 
 ##Bugs to be fixed
-1. In the leftClick function keys.Enter functionality is not working
+1. In the leftClick function keys.Enter functionality is not working(fixed)
+2. Beautiful soup is not parsing properly after adding proxy options to phantomjs
